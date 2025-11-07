@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for both public users and admins
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  feedbackPosts FeedbackPost[]
+  votes         Vote[]
+  comments      Comment[]
+}
+
+// Main feedback post model
+model FeedbackPost {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  category    String   @default("feature-request") // feature-request, bug-report, improvement, other
+  status      String   @default("under-review") // under-review, planned, completed, rejected
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  votes       Vote[]
+  comments    Comment[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([category])
+}
+
+// Vote model for upvote/downvote tracking
+model Vote {
+  id        String   @id @default(cuid())
+  type      String   // "upvote" or "downvote"
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  postId    String
+  post      FeedbackPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  // Ensure one vote per user per post
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+// Comment model for feedback discussions
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  postId    String
+  post      FeedbackPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([postId])
+}
