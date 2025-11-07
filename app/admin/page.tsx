@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LogOut } from 'lucide-react'
+import { LogOut, BarChart3 } from 'lucide-react'
 import AdminFeedbackCard from '@/components/AdminFeedbackCard'
+import WeeklySummary from '@/components/WeeklySummary'
 import { useAuth } from '@/hooks/useAuth'
 
 interface FeedbackPost {
@@ -51,6 +52,7 @@ export default function AdminPage() {
     rejected: 0,
   })
   const [filter, setFilter] = useState<'all' | 'under-review' | 'planned' | 'completed' | 'rejected'>('all')
+  const [activeTab, setActiveTab] = useState('feedback')
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
@@ -146,93 +148,112 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <Card className="p-6 border-l-4 border-l-slate-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm font-medium">Total Feedback</p>
-                <p className="text-3xl font-bold text-slate-900 mt-2">{stats.total}</p>
-              </div>
-              <div className="text-3xl">📊</div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mb-8">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-200">
+            <TabsTrigger value="feedback">Feedback Management</TabsTrigger>
+            <TabsTrigger value="summary" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Weekly Summary
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Feedback Management Tab */}
+          <TabsContent value="feedback" className="space-y-8">
+            {/* Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <Card className="p-6 border-l-4 border-l-slate-400">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-sm font-medium">Total Feedback</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-2">{stats.total}</p>
+                  </div>
+                  <div className="text-3xl">📊</div>
+                </div>
+              </Card>
+
+              <Card className="p-6 border-l-4 border-l-yellow-400">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-sm font-medium">Under Review</p>
+                    <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.underReview}</p>
+                  </div>
+                  <div className="text-3xl">📋</div>
+                </div>
+              </Card>
+
+              <Card className="p-6 border-l-4 border-l-blue-400">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-sm font-medium">Planned</p>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">{stats.planned}</p>
+                  </div>
+                  <div className="text-3xl">📅</div>
+                </div>
+              </Card>
+
+              <Card className="p-6 border-l-4 border-l-green-400">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-sm font-medium">Completed</p>
+                    <p className="text-3xl font-bold text-green-600 mt-2">{stats.completed}</p>
+                  </div>
+                  <div className="text-3xl">✅</div>
+                </div>
+              </Card>
+
+              <Card className="p-6 border-l-4 border-l-red-400">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-600 text-sm font-medium">Rejected</p>
+                    <p className="text-3xl font-bold text-red-600 mt-2">{stats.rejected}</p>
+                  </div>
+                  <div className="text-3xl">❌</div>
+                </div>
+              </Card>
             </div>
-          </Card>
 
-          <Card className="p-6 border-l-4 border-l-yellow-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm font-medium">Under Review</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.underReview}</p>
+            {/* Feedback Items */}
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Feedback Items</h2>
+
+              <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-5 bg-slate-200 mb-6">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="under-review">Under Review</TabsTrigger>
+                  <TabsTrigger value="planned">Planned</TabsTrigger>
+                  <TabsTrigger value="completed">Completed</TabsTrigger>
+                  <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="text-center py-12">
+                    <p className="text-slate-600">Loading feedback...</p>
+                  </div>
+                ) : posts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-slate-600">No feedback found</p>
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <AdminFeedbackCard
+                      key={post.id}
+                      post={post}
+                      onStatusChange={fetchPosts}
+                    />
+                  ))
+                )}
               </div>
-              <div className="text-3xl">📋</div>
-            </div>
-          </Card>
+            </Card>
+          </TabsContent>
 
-          <Card className="p-6 border-l-4 border-l-blue-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm font-medium">Planned</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">{stats.planned}</p>
-              </div>
-              <div className="text-3xl">📅</div>
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-l-green-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm font-medium">Completed</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.completed}</p>
-              </div>
-              <div className="text-3xl">✅</div>
-            </div>
-          </Card>
-
-          <Card className="p-6 border-l-4 border-l-red-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-600 text-sm font-medium">Rejected</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.rejected}</p>
-              </div>
-              <div className="text-3xl">❌</div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Feedback Items */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-slate-900 mb-4">Feedback Items</h2>
-
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-slate-200 mb-6">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="under-review">Under Review</TabsTrigger>
-              <TabsTrigger value="planned">Planned</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="space-y-4">
-            {loading ? (
-              <div className="text-center py-12">
-                <p className="text-slate-600">Loading feedback...</p>
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-slate-600">No feedback found</p>
-              </div>
-            ) : (
-              posts.map((post) => (
-                <AdminFeedbackCard
-                  key={post.id}
-                  post={post}
-                  onStatusChange={fetchPosts}
-                />
-              ))
-            )}
-          </div>
-        </Card>
+          {/* Weekly Summary Tab */}
+          <TabsContent value="summary">
+            <WeeklySummary />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )

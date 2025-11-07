@@ -29,7 +29,7 @@ export async function GET(
         comments: {
           include: {
             author: {
-              select: { id: true, name: true, email: true },
+              select: { id: true, name: true, email: true, isAdmin: true },
             },
           },
           orderBy: { createdAt: 'desc' },

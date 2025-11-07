@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -10,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface FeedbackPost {
   id: string
@@ -33,7 +35,7 @@ interface FeedbackPost {
 
 interface AdminFeedbackCardProps {
   post: FeedbackPost
-  onStatusChange: (postId: string, newStatus: string) => void
+  onStatusChange: () => void
 }
 
 /**
@@ -45,6 +47,38 @@ export default function AdminFeedbackCard({
   post,
   onStatusChange,
 }: AdminFeedbackCardProps) {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState(post.status)
+
+  /**
+   * Handle status change
+   */
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      setIsUpdating(true)
+      const response = await fetch(`/api/feedback/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update status')
+      }
+
+      setCurrentStatus(newStatus)
+      toast.success(`Status updated to ${newStatus}`)
+      onStatusChange()
+    } catch (error) {
+      console.error('Error updating status:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update status')
+      setCurrentStatus(post.status)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   /**
    * Get category badge color
    */
@@ -138,8 +172,8 @@ export default function AdminFeedbackCard({
         {/* Status Selector */}
         <div>
           <p className="text-xs text-slate-600 mb-2 font-semibold">Change Status</p>
-          <Select value={post.status} onValueChange={(value) => onStatusChange(post.id, value)}>
-            <SelectTrigger className={`${getStatusColor(post.status)}`}>
+          <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isUpdating}>
+            <SelectTrigger className={`${getStatusColor(currentStatus)}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

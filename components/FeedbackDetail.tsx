@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { ThumbsUp, ThumbsDown, MessageCircle, Send } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageCircle, Send, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -16,6 +16,7 @@ interface Comment {
     id: string
     name: string
     email: string
+    isAdmin?: boolean
   }
   createdAt: string
 }
@@ -46,7 +47,7 @@ interface FeedbackDetailProps {
 /**
  * FeedbackDetail Component
  * Displays full feedback post details with comments section
- * Allows users to add comments and vote
+ * Allows users and admins to add comments and vote
  */
 export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps) {
   const { user } = useAuth()
@@ -217,14 +218,15 @@ export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps)
         {/* Comment Input */}
         <Card className="p-4 mb-6 bg-slate-50">
           <Textarea
-            placeholder="Add a comment..."
+            placeholder={user ? (user.isAdmin ? "Add an admin comment..." : "Add a comment...") : "Please log in to comment"}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
+            disabled={!user}
             className="mb-3 min-h-24"
           />
           <Button
             onClick={handleSubmitComment}
-            disabled={isSubmittingComment || !commentText.trim()}
+            disabled={isSubmittingComment || !commentText.trim() || !user}
             className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             <Send className="w-4 h-4" />
@@ -240,15 +242,25 @@ export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps)
             </p>
           ) : (
             post.comments.map((comment) => (
-              <Card key={comment.id} className="p-4">
+              <Card key={comment.id} className={`p-4 ${comment.author.isAdmin ? 'border-l-4 border-l-purple-500 bg-purple-50' : ''}`}>
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {comment.author.name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(comment.createdAt).toLocaleDateString()}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900">
+                          {comment.author.name}
+                        </p>
+                        {comment.author.isAdmin && (
+                          <Badge className="bg-purple-600 text-white gap-1 flex items-center">
+                            <Shield className="w-3 h-3" />
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {new Date(comment.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <p className="text-slate-700 whitespace-pre-wrap">
