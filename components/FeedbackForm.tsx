@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
 
 /**
  * Validation schema for feedback form
@@ -33,8 +34,6 @@ const feedbackSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(100, 'Title must be less than 100 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description must be less than 5000 characters'),
   category: z.enum(['feature-request', 'bug-report', 'improvement', 'other']),
-  authorName: z.string().min(2, 'Name must be at least 2 characters'),
-  authorEmail: z.string().email('Invalid email address'),
 })
 
 type FeedbackFormValues = z.infer<typeof feedbackSchema>
@@ -49,6 +48,7 @@ interface FeedbackFormProps {
  * Handles form validation and API submission
  */
 export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<FeedbackFormValues>({
@@ -57,8 +57,6 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
       title: '',
       description: '',
       category: 'feature-request',
-      authorName: '',
-      authorEmail: '',
     },
   })
 
@@ -68,26 +66,13 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
    * Shows success/error toast notifications
    */
   const onSubmit = async (values: FeedbackFormValues) => {
+    if (!user) {
+      toast.error('Please log in to submit feedback')
+      return
+    }
+
     try {
       setIsSubmitting(true)
-
-      // First, create or get the user
-      // In a real app, this would use authentication
-      // For now, we'll create a simple user record
-      const userResponse = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: values.authorEmail,
-          name: values.authorName,
-        }),
-      }).catch(() => null)
-
-      let userId = 'anonymous'
-      if (userResponse?.ok) {
-        const user = await userResponse.json()
-        userId = user.id
-      }
 
       // Create feedback post
       const response = await fetch('/api/feedback', {
@@ -97,12 +82,13 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
           title: values.title,
           description: values.description,
           category: values.category,
-          authorId: userId,
+          authorId: user.id,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit feedback')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to submit feedback')
       }
 
       toast.success('Feedback submitted successfully!')
@@ -110,7 +96,7 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
       onSuccess?.()
     } catch (error) {
       console.error('Error submitting feedback:', error)
-      toast.error('Failed to submit feedback. Please try again.')
+      toast.error(error instanceof Error ? error.message : 'Failed to submit feedback. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -125,36 +111,6 @@ export default function FeedbackForm({ onSuccess }: FeedbackFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Author Information */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="authorName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Your Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="authorEmail"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
           {/* Category Selection */}
           <FormField
             control={form.control}

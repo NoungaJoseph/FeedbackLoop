@@ -8,6 +8,7 @@ import { ThumbsUp, ThumbsDown, MessageCircle } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import FeedbackDetail from '@/components/FeedbackDetail'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
 
 interface FeedbackPost {
   id: string
@@ -41,6 +42,7 @@ interface FeedbackCardProps {
  * Allows users to view details and vote
  */
 export default function FeedbackCard({ post, onVoteChange }: FeedbackCardProps) {
+  const { user } = useAuth()
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isVoting, setIsVoting] = useState(false)
 
@@ -49,31 +51,33 @@ export default function FeedbackCard({ post, onVoteChange }: FeedbackCardProps) 
    * Sends vote to API and updates UI
    */
   const handleVote = async (type: 'upvote' | 'downvote') => {
+    if (!user) {
+      toast.error('Please log in to vote')
+      return
+    }
+
     try {
       setIsVoting(true)
-      // In a real app, we'd get the actual user ID from auth
-      const userId = localStorage.getItem('userId') || 'anonymous-' + Math.random()
-      localStorage.setItem('userId', userId)
-
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           postId: post.id,
-          userId,
+          userId: user.id,
           type,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to vote')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to vote')
       }
 
       toast.success(`${type === 'upvote' ? 'Upvoted' : 'Downvoted'}!`)
       onVoteChange?.()
     } catch (error) {
       console.error('Error voting:', error)
-      toast.error('Failed to vote. Please try again.')
+      toast.error(error instanceof Error ? error.message : 'Failed to vote. Please try again.')
     } finally {
       setIsVoting(false)
     }

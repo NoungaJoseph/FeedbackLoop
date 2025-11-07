@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { ThumbsUp, ThumbsDown, MessageCircle, Send } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Comment {
   id: string
@@ -48,6 +49,7 @@ interface FeedbackDetailProps {
  * Allows users to add comments and vote
  */
 export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps) {
+  const { user } = useAuth()
   const [post, setPost] = useState<FeedbackPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [commentText, setCommentText] = useState('')
@@ -79,6 +81,11 @@ export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps)
    * Handles comment submission
    */
   const handleSubmitComment = async () => {
+    if (!user) {
+      toast.error('Please log in to comment')
+      return
+    }
+
     if (!commentText.trim()) {
       toast.error('Comment cannot be empty')
       return
@@ -86,21 +93,19 @@ export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps)
 
     try {
       setIsSubmittingComment(true)
-      const userId = localStorage.getItem('userId') || 'anonymous-' + Math.random()
-      localStorage.setItem('userId', userId)
-
       const response = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           postId,
-          authorId: userId,
+          authorId: user.id,
           content: commentText,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit comment')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to submit comment')
       }
 
       toast.success('Comment added!')
@@ -108,7 +113,7 @@ export default function FeedbackDetail({ postId, onClose }: FeedbackDetailProps)
       fetchPostDetails() // Refresh to show new comment
     } catch (error) {
       console.error('Error submitting comment:', error)
-      toast.error('Failed to add comment')
+      toast.error(error instanceof Error ? error.message : 'Failed to add comment')
     } finally {
       setIsSubmittingComment(false)
     }

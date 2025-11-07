@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ThumbsUp, ThumbsDown, MessageCircle, Plus } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, MessageCircle, Plus, LogOut } from 'lucide-react'
 import FeedbackForm from '@/components/FeedbackForm'
 import FeedbackCard from '@/components/FeedbackCard'
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { useAuth } from '@/hooks/useAuth'
 
 interface FeedbackPost {
   id: string
@@ -31,16 +33,27 @@ interface FeedbackPost {
 }
 
 export default function Home() {
+  const router = useRouter()
+  const { user, isLoading, logout } = useAuth()
   const [posts, setPosts] = useState<FeedbackPost[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'feature-request' | 'bug-report' | 'improvement'>('all')
   const [sort, setSort] = useState<'newest' | 'popular' | 'controversial'>('newest')
   const [isFormOpen, setIsFormOpen] = useState(false)
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, isLoading, router])
+
   // Fetch feedback posts on component mount and when filters change
   useEffect(() => {
-    fetchPosts()
-  }, [filter, sort])
+    if (user) {
+      fetchPosts()
+    }
+  }, [filter, sort, user])
 
   /**
    * Fetches feedback posts from the API with current filters and sorting
@@ -71,6 +84,23 @@ export default function Home() {
     fetchPosts()
   }
 
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <p className="text-slate-600">Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -80,19 +110,37 @@ export default function Home() {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               FeedbackLoop
             </h1>
-            <p className="text-sm text-slate-600">Collect and manage user feedback</p>
+            <p className="text-sm text-slate-600">Welcome, {user.name}!</p>
           </div>
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <Plus className="w-4 h-4" />
-                Submit Feedback
+          <div className="flex gap-3 items-center">
+            {user.isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin')}
+              >
+                Admin Dashboard
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <FeedbackForm onSuccess={handleFeedbackSubmitted} />
-            </DialogContent>
-          </Dialog>
+            )}
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <Plus className="w-4 h-4" />
+                  Submit Feedback
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <FeedbackForm onSuccess={handleFeedbackSubmitted} />
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              className="gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
